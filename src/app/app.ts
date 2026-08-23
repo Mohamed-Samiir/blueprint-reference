@@ -1,8 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { HlmButtonImports } from '@blueprint-platform/ui/button';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, HlmButtonImports],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',

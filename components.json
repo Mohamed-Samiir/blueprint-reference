@@ -1,0 +1,5 @@
+{
+  "componentsPath": "src/app/ui",
+  "importAlias": "@blueprint-platform/ui",
+  "style": "nova"
+}
