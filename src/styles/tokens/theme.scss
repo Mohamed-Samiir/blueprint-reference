@@ -1,12 +1,26 @@
-@use './palette-default' as palette;
+@use './palette-default' as default-palette;
+@use './palette-dark' as dark-palette;
+@use './palette-brand-x' as brand-x-palette;
+@use './palette-brand-x-dark' as brand-x-dark-palette;
 @use './scale' as scale;
 @use './emit';
 
 :root {
   --spacing: #{scale.$spacing-base};
+  --border-width: 1px;
 }
 
-@include emit.emit-vars(palette.$palette-default, 'color');
+// brand-x is a PERMANENT partial-override layer, not a switchable theme:
+// emitted at `:root` right after the default map, so any key it defines wins by
+// source order and any key it omits keeps the default value. No class needed.
+//
+// `dark` stays a class toggle (`.dark` on <html>); brand-x-dark rides with it,
+// also always-on, emitted under `.dark` so it overrides the dark base the same
+// way brand-x overrides the light base.
+//   light : default -> brand-x
+//   dark  : default -> brand-x -> dark -> brand-x-dark
+@include emit.emit-vars(default-palette.$palette-default);
+@include emit.emit-vars(brand-x-palette.$palette-brand-x);
+@include emit.emit-vars(dark-palette.$palette-dark, '', '.dark');
+@include emit.emit-vars(brand-x-dark-palette.$palette-brand-x-dark, '', '.dark');
 @include emit.emit-vars(scale.$spacing-scale, 'spacing');
-@include emit.emit-vars(scale.$radius-scale, 'radius');
-@include emit.emit-vars(scale.$border-scale, 'border');

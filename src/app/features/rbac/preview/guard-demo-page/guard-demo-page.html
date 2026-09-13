@@ -1,0 +1,10 @@
+<div
+  class="bg-background flex min-h-[50svh] flex-col items-center justify-center gap-2 px-4 text-center"
+>
+  <p class="text-muted-foreground text-sm font-medium tracking-wide uppercase">Guard demo</p>
+  <h1 class="text-xl font-semibold tracking-tight">You have "{{ requiredKey }}"</h1>
+  <p class="text-muted-foreground max-w-sm text-sm">
+    `permissionGuard('{{ requiredKey }}')` let you through — the signed-in user's role grants this
+    key.
+  </p>
+</div>
