@@ -1,0 +1,109 @@
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideEye, lucideEyeOff } from '@ng-icons/lucide';
+import { Observable, map } from 'rxjs';
+import { HlmAlertImports } from '@blueprint-platform/ui/alert';
+import { HlmButtonImports } from '@blueprint-platform/ui/button';
+import { HlmCheckboxImports } from '@blueprint-platform/ui/checkbox';
+import { HlmFieldImports } from '@blueprint-platform/ui/field';
+import { HlmInput } from '@blueprint-platform/ui/input';
+import { HlmInputGroupImports } from '@blueprint-platform/ui/input-group';
+import { HlmSpinner } from '@blueprint-platform/ui/spinner';
+import { AUTH_FEATURES } from '../../../../core/auth/auth-features.token';
+import { JwtAuthService } from '../../../../core/auth/jwt-auth.service';
+import { SessionAuthService } from '../../../../core/auth/session-auth.service';
+
+type SocialProvider = 'google' | 'microsoft';
+
+/**
+ * Sign-in form (route: `<layout>/login`). Calls whichever auth service the
+ * `?strategy=` query param selects (`jwt` by default) so the preview can
+ * exercise either interceptor. Fields are composed inline from the spartan
+ * `hlm-field` / `hlmInput` primitives; the password uses `hlm-input-group` with
+ * a reveal button — the exact same markup as every other password field in the
+ * module. Spacing is grid `gap-*` throughout.
+ */
+@Component({
+  selector: 'app-login-form',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    NgIcon,
+    HlmAlertImports,
+    HlmButtonImports,
+    HlmCheckboxImports,
+    HlmFieldImports,
+    HlmInput,
+    HlmInputGroupImports,
+    HlmSpinner,
+  ],
+  providers: [provideIcons({ lucideEye, lucideEyeOff })],
+  templateUrl: './login-form.html',
+  styleUrl: './login-form.scss',
+})
+export class LoginForm {
+  private readonly fb = inject(NonNullableFormBuilder);
+  private readonly jwt = inject(JwtAuthService);
+  private readonly session = inject(SessionAuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  protected readonly authFeatures = inject(AUTH_FEATURES);
+
+  /** Which auth mechanism this form drives, from `?strategy=jwt|session`. */
+  protected readonly strategy = toSignal(
+    this.route.queryParamMap.pipe(
+      map((p) => (p.get('strategy') === 'session' ? 'session' : 'jwt')),
+    ),
+    { initialValue: 'jwt' as 'jwt' | 'session' },
+  );
+
+  protected readonly pending = signal(false);
+  protected readonly serverError = signal<string | null>(null);
+  protected readonly done = signal(false);
+  protected readonly showPassword = signal(false);
+
+  protected readonly form = this.fb.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, Validators.minLength(8)]],
+    rememberMe: [false],
+  });
+
+  protected socialLogin(provider: SocialProvider): void {
+    // Mock only — a real integration hands off to an OAuth provider here.
+    console.info(`[auth] mock social login: ${provider}`);
+  }
+
+  protected onTerms(): void {
+    console.info('[auth] terms and conditions clicked');
+  }
+
+  protected submit(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.pending.set(true);
+    this.serverError.set(null);
+    this.done.set(false);
+
+    const { email, password, rememberMe } = this.form.getRawValue();
+    const req = { email, password, rememberMe };
+    const login$: Observable<unknown> =
+      this.strategy() === 'session' ? this.session.login(req) : this.jwt.login(req);
+
+    login$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.pending.set(false);
+        this.done.set(true);
+      },
+      error: (err: Error) => {
+        this.pending.set(false);
+        this.serverError.set(err.message);
+      },
+    });
+  }
+}

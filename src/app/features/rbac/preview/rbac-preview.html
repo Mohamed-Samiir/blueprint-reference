@@ -1,0 +1,55 @@
+@let chip = 'rounded-md border px-2.5 py-1 whitespace-nowrap hover:bg-accent';
+@let on = 'bg-accent text-accent-foreground';
+
+<div class="flex h-svh flex-col">
+  <div
+    class="bg-background text-foreground flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2 text-sm"
+  >
+    <span class="font-semibold">rbac-preview</span>
+
+    <nav class="flex items-center gap-1">
+      <a [class]="chip" routerLink="/rbac-preview/permissions" [routerLinkActive]="on">
+        Permissions
+      </a>
+      <a [class]="chip" routerLink="/rbac-preview/roles" [routerLinkActive]="on">Roles</a>
+    </nav>
+
+    <nav class="flex flex-wrap items-center gap-1">
+      <a [class]="chip" routerLink="/rbac-preview/guarded/users-view" [routerLinkActive]="on">
+        guarded: users.view
+      </a>
+      <a [class]="chip" routerLink="/rbac-preview/guarded/billing-refund" [routerLinkActive]="on">
+        guarded: billing.refund
+      </a>
+    </nav>
+
+    <div class="ms-auto flex flex-wrap items-center gap-1">
+      <span class="text-muted-foreground text-xs">active role:</span>
+      @for (role of rolesService.roles(); track role.id) {
+        <button
+          type="button"
+          [class]="demoSession.activeRole()?.id === role.id ? chip + ' ' + on : chip"
+          [disabled]="!role.active"
+          [attr.title]="!role.active ? 'Inactive — grants nothing' : null"
+          (click)="setActiveRole(role.id)"
+        >
+          {{ role.name }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="bg-muted/30 text-muted-foreground shrink-0 border-b px-4 py-1 text-xs">
+    no sign-in step — RBAC's demo session picks the active role directly.
+    current permissions:
+    @if (demoSession.currentPermissionKeys().length > 0) {
+      <code>{{ demoSession.currentPermissionKeys().join(', ') }}</code>
+    } @else {
+      <span>none</span>
+    }
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-auto">
+    <router-outlet />
+  </div>
+</div>

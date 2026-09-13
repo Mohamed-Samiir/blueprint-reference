@@ -11,9 +11,18 @@
  * when inactive, so the active styling leaked onto every item (e.g. all sidebar
  * menu buttons looked active). These declarations mirror the preset so the
  * variants only match a truthy value or the equivalent `data-state`.
- * Verbatim from `@spartan-ng/brain/hlm-tailwind-preset.css`. `dark` is
- * intentionally omitted — this repo switches palettes via `.theme-brand-x`, not `.dark`.
+ * Verbatim from `@spartan-ng/brain/hlm-tailwind-preset.css`.
+ *
+ * `dark` is a CLASS toggle here (`.dark` on <html>, driven by `ThemeService`;
+ * full dark palette emitted under `.dark` in `tokens/theme.scss`). Without the
+ * `@custom-variant dark` below, Tailwind's `dark:` resolves to
+ * `@media (prefers-color-scheme: dark)`, so every `dark:*` utility in the helm
+ * primitives is dead whenever the OS scheme and the app toggle disagree — the
+ * palette vars go dark but component-level `dark:` refinements never apply.
+ * (`.theme-brand-x` is a separate, always-on brand override layer, unrelated.)
  */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @custom-variant data-open {
   &:where([data-state='open']),
   &:where([data-open]:not([data-open='false'])) {

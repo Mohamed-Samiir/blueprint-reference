@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "generate:api": "orval"
   },
   "private": true,
   "packageManager": "npm@11.17.0",
@@ -27,6 +28,7 @@
     "embla-carousel": ">=8.0.0 <9.0.0",
     "embla-carousel-angular": "^22.0.0",
     "ngx-scrollbar": "^19.1.5",
+    "orval": "^8.28.1",
     "postcss": "^8.5.26",
     "rxjs": "~7.8.0",
     "tailwind-merge": "^3.5.0",

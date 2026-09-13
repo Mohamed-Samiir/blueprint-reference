@@ -7,6 +7,26 @@ is built and verified in `blueprint-reference` but has not been synced yet.
 
 ---
 
+## PREPARATION — `AUTH_FEATURES` token + conditional login-form links (unsynced)
+
+**Date:** 2026-09-12
+**Tag:** _none — nothing has moved to `blueprint-platform` yet (sync happens as part of `task-auth-optional-forms.md` directly against `packages/modules/src/generators/auth/`, not via this log's usual tag flow)_
+**Task list:** `blueprint-platform`'s `tasks/task-auth-optional-forms.md`, Task 0
+
+**What changed:**
+
+- New `core/auth/auth-features.token.ts` — `AUTH_FEATURES` `InjectionToken<AuthFeatures>` (`signup`/`forgotPassword`/`changePassword` booleans), `providedIn: 'root'` + factory, hardcoded `true` for all three here (the generator's copy is `.template`-substituted from three new schema flags instead).
+- `login-form.ts` now injects it (`protected readonly authFeatures = inject(AUTH_FEATURES)`); `login-form.html`'s existing "Forgot password?" link is wrapped in `@if (authFeatures.forgotPassword)`. **Found while implementing:** the reference form had no "Sign up" link at all yet (the task's own wording assumed one already existed) — added one (`Don't have an account? Sign up`, `routerLink="../signup"`, styled as a centered `hlmBtn variant="link"` row under the terms paragraph, matching the existing link/button idiom in this form) wrapped in `@if (authFeatures.signup)`.
+- Auth preview: three new toggle chips (`signup` / `forgot` / `change-pw`) backed by a new `AuthFeaturesPreviewStore` (plain `signal(true)` x3, `providedIn: 'root'`, preview-only, not synced). Since `AuthFeatures` is intentionally plain booleans (generation-time-fixed, not meant to be runtime-reactive — same as `BLUEPRINT_CONFIG`), toggling a chip can't mutate an already-injected value in place. Instead a new thin wrapper, `AuthOutletScope` (`<router-outlet>` + a component-level `AUTH_FEATURES` override reading the store), is destroyed and recreated (`AuthPreview.outletReady` flipped false→true via `queueMicrotask`) on every toggle click, which re-runs the `useFactory` against the store's current values. `login-form.html`'s row of links has `Remember me` alone (via the same `justify-between` flex row) when `forgotPassword` is off, and the "Sign up" row simply doesn't render when `signup` is off — no `@else` spacer needed since each is a normal block-level element, not something depending on a sibling for layout.
+
+**Verified:** `ng build` (prod) clean, including the new `auth-preview-routes` lazy chunk. **Live browser toggle-by-toggle pass (Task 0.3's spacing/alignment check with either/both links absent) still owed — no browser in this environment**, same caveat as the earlier dark-theme/switchers prep entry below. Whoever next has a browser against this repo should hit `/auth-preview`, click each of the three new toggle chips independently and together, and confirm no awkward gap/misalignment in `login-form` when a link is missing before treating Task 0 as fully done.
+
+### For the future sync task list
+
+Emit into the generated template (mirrors what Task 0 already anticipates): `core/auth/auth-features.token.ts` (as `.template`, substituting the three flags), and the two `login-form.html`/`.ts` edits above (`login-form.ts.template` in `blueprint-platform` needs the same `AUTH_FEATURES` inject added; its `.html` is not a `.template` and can take the wrap/new-link diff verbatim). Nothing under `auth-preview/` is ever synced — preview-only scaffolding.
+
+---
+
 ## PREPARATION — sidebar layout variants (unsynced)
 
 **Date:** 2026-08-26
@@ -36,7 +56,7 @@ is built and verified in `blueprint-reference` but has not been synced yet.
     sidebar, so the palette toggle is visibly different).
   - `src/styles/tailwind-theme.css` — `--color-sidebar* : var(--sidebar*)` in
     `@theme inline`.
-  No `hlm-sidebar*` template/class was edited.
+    No `hlm-sidebar*` template/class was edited.
 
 ### Sync-ready checklist (per the workflow doc)
 
@@ -47,7 +67,7 @@ is built and verified in `blueprint-reference` but has not been synced yet.
       / `border`. Verified by grep + by the production build emitting every
       `--color-sidebar*` utility against `var(--sidebar*)`.
 - [x] **Compiles** — `ng build` (production, AOT) and `ng build --configuration
-      development` both pass; the `layout-preview-routes` lazy chunk is emitted, so
+  development` both pass; the `layout-preview-routes` lazy chunk is emitted, so
       none of this code lands in the initial bundle. `ng serve` boots clean and
       `/layout-preview/{sidebar,floating,inset}` all serve 200. (The pre-existing
       "initial bundle exceeded 500 kB budget" warning is from the base app's
@@ -219,3 +239,339 @@ Two defects found while reviewing the shells in the preview:
    palette-aware in light and dark. Component-scoped, no spartan edit.
 
 `git diff -- src/app/ui/` still empty; prod + dev builds clean; prettier clean.
+
+---
+
+## PREPARATION — dark theme, brand-x scaffolds, theme/language switchers, flyout fix (unsynced)
+
+**Date:** 2026-08-29
+**Tag:** _none_
+**Task list:** `TASKS/task-dark-theme-switchers.md`
+
+### What was built / changed in `blueprint-reference`
+
+**Palettes & emission** (`src/styles/tokens/`)
+
+- `_palette-dark.scss` — full dark palette (zinc-based), every key from
+  `_palette-default.scss` incl. the 8 `sidebar*` keys. `radius` intentionally
+  omitted (shape doesn't change with colour scheme). Emitted under `.dark` (a
+  class toggle, not `prefers-color-scheme`).
+- `_palette-brand-x.scss` — reset to `$palette-brand-x: ()` (was the purple test
+  values). Empty override scaffold for a generated project's LIGHT-mode brand.
+- `_palette-brand-x-dark.scss` — new, also `()`. DARK-mode brand override
+  scaffold, emitted under the compound selector `.dark.theme-brand-x`.
+- `theme.scss` emits: default → `.dark` → `.theme-brand-x` → `.dark.theme-brand-x`
+  → spacing. Empty maps emit nothing. **Task 2.5 verified:** a temp
+  `'primary': #ff0000` in `_palette-brand-x-dark.scss` compiled to exactly
+  `.dark.theme-brand-x { --primary: #ff0000; }` and nothing else — precedence is
+  CSS specificity (compound selector), not emission order. Test value removed.
+
+**Root services** (`src/app/shared/`)
+
+- `theme.service.ts` — `ThemeService`, single writer of the `dark` and
+  `theme-brand-x` classes on `<html>`; reads localStorage (fallback: current
+  class), re-persists on change; applies synchronously in ctor + via `effect`.
+- `language.service.ts` — `LanguageService`, `language` signal (`'en'|'ar'`) +
+  `dir` computed; sets `lang`/`dir` on `<html>`; persisted. Direction only — no
+  translation system.
+- Both instantiated from `provideAppInitializer` in `app.config.ts` so persisted
+  state applies before first paint.
+
+**Switcher components** (`src/app/shared/ui/`)
+
+- `theme-switcher/` — wraps spartan `hlm-switch`, bound to `ThemeService.dark`.
+- `language-switcher/` — `hlmBtn` toggle bound to `LanguageService`.
+- Neither self-gates; visibility is the call site's job.
+
+**Config** (`src/app/config/template-config.ts`)
+
+- `BlueprintConfig` gains `showThemeSwitcher` / `showLanguageSwitcher`, both
+  default `true`. `provide-blueprint.ts` flat spread already handles plain
+  booleans — no change needed (no nested-object case here).
+
+**User menu** (`src/app/shared/ui/user-menu/`)
+
+- New `UserMenu` — spartan `hlm-dropdown-menu` trigger (avatar + name), items
+  Profile / Settings / Log out, plus `@if (config.show*Switcher)` rows for the
+  two switchers. One component, used in all four layouts:
+  - sidebar footer in `sidebar-shell` / `floating-shell` / `inset-shell`
+    (replaces the old inline per-shell account dropdowns);
+  - the **top bar** in `topbar-shell` (its sidebar footer was removed).
+- `topbar-shell` lost its bespoke `lang`/`dir`/`brandX` state and top-bar
+  buttons — direction/palette are global now; the top bar keeps the collapse
+  trigger + `<app-user-menu>`.
+- All four shells now read `side` from `LanguageService.dir()` instead of
+  `@angular/cdk/bidi` `Directionality` (reactive to the runtime `<html dir>`).
+
+**Flyout fix** (Task 7 — `sidebar-shell` + `topbar-shell`)
+
+- The `item.children` menu entry now branches on `collapsed()`
+  (`HlmSidebarService.state() === 'collapsed' && !isMobile()`):
+  collapsed → icon + hover dropdown flyout (`SidebarItemFlyout` unchanged);
+  expanded → ordinary in-place `hlm-collapsible` + `hlmSidebarMenuSub` list.
+  Previously the expanded state wrongly opened a click dropdown.
+
+**Preview** (`src/app/layout-preview/layout-preview.ts`)
+
+- Toolbar now drives the shared `ThemeService` / `LanguageService` /
+  `HlmSidebarService`: buttons for sidebar collapse, dark mode, brand-x palette,
+  direction. Dropped the local `[dir]` / `[class.theme-brand-x]` wrapper and
+  `@angular/cdk/bidi`.
+
+### Sync-ready checklist
+
+- [x] `git diff -- src/app/ui/` unchanged by this task list (the only prior
+      spartan edit, `hlm-sidebar-content` overflow, is already committed).
+- [x] No hardcoded colours in shells / shared components — CSS vars + spartan
+      token utilities only. Dark values live in `_palette-dark.scss`.
+- [x] `ng build` (prod) and `ng build --configuration development` both clean.
+      `ng serve` serves `/layout-preview/{sidebar,floating,inset,topbar}` (200).
+- [x] Prettier clean for `src/app/shared/**`, `src/app/layout/**`,
+      `src/app/layout-preview/**`.
+- [x] Task 2.5 compound-selector override verified in compiled CSS; scaffolds
+      shipped empty.
+- [ ] **Live browser pass still owed** (no browser in this environment). To
+      confirm via the preview toolbar: default-light / default-dark /
+      brand-x-light / brand-x-dark (re-add a temp `_palette-brand-x-dark` value),
+      both switchers visible and both hidden (flip the two `provideBlueprint`
+      booleans in `app.config.ts` for the check), collapsed vs expanded flyout
+      rendering in `sidebar-shell` + `topbar-shell`, and zero console errors in
+      every combination.
+
+### For the future sync task list
+
+Emit into the generated template: `_palette-dark.scss`, `_palette-brand-x.scss`
+(empty), `_palette-brand-x-dark.scss` (empty), the `theme.scss` emission order,
+`src/app/shared/**` (services + switchers + user-menu), the `template-config.ts`
+booleans, the `app.config.ts` app initializer, and the Task 7 flyout branching in
+`sidebar-shell` / `topbar-shell`. Nothing in `blueprint-platform` /
+`schema.json` / `preset.ts` was touched.
+
+---
+
+## PREPARATION — RBAC module: permissions + roles (unsynced)
+
+**Task list:** `TASKS/task-rbac-reference.md`
+
+### What was built
+
+**Core** (`src/app/core/rbac/`)
+
+- `rbac-storage.ts` — `localStorage` wrapper (`bp-rbac-` prefix, JSON in/out),
+  shared by both services below; neither touches `localStorage` directly.
+- `models.ts` — `Module` / `Permission` / `Role`, exactly the Task 2 shapes.
+- `mock-data.ts` — seed modules/permissions/roles. The dependency graph is
+  deliberately non-trivial: two independent 3-level chains
+  (`users.delete → users.edit → users.view`, `billing.refund → billing.manage →
+billing.view`) and `users.view` depended on by two permissions directly, a
+  third transitively.
+- `mock-users.data.ts` — `MockRbacUser extends AuthUser` (Task 0.2: reused the
+  real type) + `roleId`. `u_1`/`u_2` share ids with the auth module's mock
+  accounts so signing in for real resolves to a real role.
+- `permission-graph.ts` + `.spec.ts` — `resolveDependencies` / `resolveDependents`
+  (both transitive) and `wouldCreateCycle`. 11 hand-written cases: an A→B→C
+  chain both directions, a diamond (no duplicate resolution), a leaf with no
+  dependents, a permission depended on by 3 others, self/direct/transitive
+  cycle detection, and a defensive cyclic-graph termination check. All pass
+  (`npx ng test --include src/app/core/rbac/permission-graph.spec.ts`).
+- `permissions.service.ts` / `roles.service.ts` — signals over `RbacStorage`,
+  seeded from `mock-data.ts` on first run. `deletePermissionCascade(id)` removes
+  the target + every `resolveDependents` result, strips the removed ids out of
+  every remaining permission's `dependsOn`, and returns what was removed so the
+  caller can also call `RolesService.removePermissionIds(...)`.
+- `current-user-permissions.service.ts` — the Task 6.2 auth↔RBAC bridge. Reads
+  `userId` straight from `core/auth/token-store.ts`'s `TokenStore` (extended
+  with a 4th key, see below) rather than asking "which auth service is
+  active" — one id, written by whichever strategy logged in, read from one
+  place. A deactivated role resolves to zero permissions (the concrete answer
+  to Task 5.6's open question, see below).
+- `permission.guard.ts` — `permissionGuard(requiredKey)` factory, redirects to
+  `/forbidden` on deny.
+
+**Auth-adjacent, but conceptually auth's** (`src/app/core/auth/`)
+
+- `auth.guard.ts` — **new**, Task 6.1's real gap-fill: `authGuard` was never
+  built in the earlier auth task list. Belongs to auth's eventual sync, not
+  RBAC's, even though it was written here.
+- `token-store.ts` — `AuthTokenKey` gained a 4th value, `'userId'`
+  (`bp-auth-user-id`). Not a token, but the same small "persisted auth state"
+  seam is the natural place for it.
+- `jwt-auth.service.ts` / `session-auth.service.ts` — both now write `userId`
+  on successful login and clear it on logout.
+
+**Features** (`src/app/features/rbac/`) — every component is the mandatory
+three files (`.ts`/`.html`/`.scss`, CLAUDE.md's rule)
+
+- `permissions/permissions-list/` — module-grouped spartan `hlm-accordion`,
+  edit/delete icon buttons, **its own search box** filtering label/key.
+  Cascade-delete (4.3) via `hlm-alert-dialog` (imperative `viewChild().open()`/
+  `.close()`, not the `[state]` input — avoids a state/backdrop-dismiss desync).
+- `permissions/permission-form/` — module select-or-create (`hlm-native-select`
+  - a sentinel option revealing a name field), label/key, and `dependsOn` as
+    grouped checkboxes (not a combobox — see below) with its own search and
+    per-row `disabled` + tooltip when a candidate would cycle
+    (`wouldCreateCycle`).
+- `roles/roles-list/` — spartan `hlm-table` (`hlmTableContainer` already
+  `overflow-x-auto`, so narrow viewports scroll rather than break), a read-only
+  `hlm-badge` for active/inactive, assigned-user count, `hlm-dropdown-menu` row
+  actions (Edit / View assigned users / Deactivate·Activate / Delete). **Its
+  own search box.** Delete and deactivate share one `hlm-alert-dialog`,
+  messaged by assigned-user count (5.5/5.6); "View assigned users" reuses the
+  same alert-dialog pattern for a plain read-only list (5.7) rather than
+  `HlmDialogService`'s component-outlet API.
+- `roles/role-form/` — name/description/active (`hlm-switch`) + the permission
+  picker: grouped checkboxes, **its own search box** (the task's third required
+  search location), cascade-select as an inline `hlmAlert` notice (5.3), and
+  cascade-*un*check (5.4 — see below) as a second `hlm-alert-dialog`.
+- `forbidden/` — real, minimal, styled page (not a placeholder) — where
+  `permissionGuard` sends a deny.
+- `preview/rbac-preview.*` + `guard-demo-page/` — toolbar shell, **the whole
+  route guarded by `authGuard`** (Task 6.1's "wrap the main shell" instruction).
+  Two links behind `permissionGuard(...)` with different keys
+  (`users.view` — the demo account's role has it; `billing.refund` — it
+  doesn't), so both the allow and deny paths are reachable from one place.
+- `rbac.routes.ts` — the real feature routes (`permissions`, `permissions/new`,
+  `permissions/:id/edit`, and the `roles` equivalents), nested for predictable
+  relative routing, mounted as `RBAC_PREVIEW_ROUTES`'s children.
+
+### Judgment calls (flagged per Task 11, expanded in `RBAC_MODULE_SYNC_SUMMARY.md`)
+
+- Mock persistence: **`localStorage`**, matching the auth work — but flagged as
+  a pure backend stand-in here, not a parameterized `local`/`memory`-style
+  production choice like auth's `TokenStore`.
+- 5.4 (mirrored uncheck-cascade): **built as specified** — confirmed not
+  "judged unnecessary."
+- 5.6 (deactivate semantics): implemented as "assigned users lose these
+  permissions immediately, restored on reactivation" — a real product decision
+  this reference guessed at, not one handed down.
+- `dependsOn` / permission-picker "multi-select": grouped checkboxes with
+  search, not spartan's `combobox`/`hlm-combobox-multiple` — lower integration
+  risk, consistent UI language between the three pickers. Combobox is a
+  reasonable alternative worth revisiting.
+- RBAC forms navigate back to their list with an **absolute** URL
+  (`/rbac-preview/permissions`), unlike auth's layout-relative routing — RBAC
+  has exactly one mount point here; noted as a simplification.
+
+### Sync-ready checklist
+
+- [x] Cascade-delete, cascade-select, cascade-uncheck, delete-with-users,
+      deactivate-with-users all implemented; `resolveDependencies`/
+      `resolveDependents` unit-tested against 3+ permission chains (see above).
+- [x] `authGuard` deny path **confirmed live**: headless Chrome screenshot of
+      `/rbac-preview` while signed out shows the real redirect to
+      `/auth-preview/split/login`. `permissionGuard`'s two branches are wired
+      with a demo account whose role provably has one required key and lacks
+      the other, but the allow path and every dialog interaction were only
+      exercised via successful AOT template compilation + source-level API
+      verification, not a live click-through — no interactive browser in this
+      environment. **Live click-through pass still owed**, same caveat as
+      every earlier preview in this log.
+- [x] `ng build` (prod) clean, `rbac-preview-routes` lazy chunk emitted.
+- [x] No hardcoded colors; every new component composes spartan primitives
+      unmodified (`git diff -- src/app/ui/` empty).
+- [x] Responsive: table scrolls horizontally (spartan's own
+      `hlmTableContainer`), forms are `max-w-2xl` with `sm:grid-cols-2`,
+      accordion/list content is block-level with no fixed widths.
+
+### For the future sync task list
+
+See `RBAC_MODULE_SYNC_SUMMARY.md` at the repo root for the full file listing,
+the auth↔RBAC dependency question (does `modules:rbac` require `modules:auth`
+first, or is the bridge optional/pluggable?), the spartan components exercised
+here for the first time in this reference (`alert-dialog`, `accordion`,
+`native-select`, `table`, `badge`, `textarea`) and their sync status into
+`blueprint-platform`, and every open question Task 11 asked for. Nothing in
+`blueprint-platform` / `schema.json` / `preset.ts` was touched.
+
+---
+
+## PREPARATION — User Management module (unsynced)
+
+**Task list:** `TASKS/task-user-management-reference.md`
+
+### Hard rule this module follows: zero dependency on `core/auth` / `core/rbac`
+
+Confirmed by grep — `grep -rnE "^\s*import .*(core/auth|core/rbac)" src/app/core/user-management/
+src/app/features/user-management/` returns nothing. The storage wrapper
+(`user-storage.ts`) and id helper (`user-id.ts`) duplicate `core/rbac`'s
+pattern on purpose rather than importing it. `accountRole` (a plain string
+label — "Admin", "Manager", "Staff", "Viewer") is deliberately named to avoid
+even echoing RBAC's `Role` concept.
+
+### What was built
+
+**Core** (`src/app/core/user-management/`)
+
+- `models.ts` — `ManagedUser`, exactly the Task 1 shape.
+- `role-options.data.ts` — the fixed `ROLE_OPTIONS` label array.
+- `user-storage.ts` — fresh `localStorage` wrapper (`bp-user-mgmt-` prefix),
+  independent implementation of the same pattern as `core/rbac/rbac-storage.ts`.
+- `user-id.ts` — same idea as `core/rbac/rbac-id.ts`, duplicated.
+- `user-mock.data.ts` — 5 seed users across all 4 roles, one inactive (so the
+  Activate label-swap has something to demo immediately).
+- `user.service.ts` — `list`/`getById`/`create`/`update`/`deactivate`/
+  `activate`/`changeRole`, all `Observable`-returning with an artificial delay,
+  backed by `UserStorage`, seeded on first run.
+
+**Features** (`src/app/features/user-management/`) — every component the
+mandatory three files
+
+- `users-list/` — spartan `hlm-table`, `hlm-avatar` thumbnail (falls back to
+  initials), `hlm-badge` status, `hlm-dropdown-menu` row actions (View details /
+  Edit / Change role / Deactivate·Activate). Hosts the three dialogs below via
+  `viewChild(...).open(user)`.
+- `user-form/` — shared, `mode: 'add' | 'edit'`-parameterized field markup
+  (Task 3.2): username, email, profile image (`FileReader` → base64 preview via
+  `hlm-avatar`), account role (`hlm-native-select`), status (`hlm-switch`,
+  edit-mode only — internally a boolean `active` control translated to/from
+  `ManagedUser['status']` at the form's edges, since the switch primitive is
+  boolean and the model field isn't).
+- `add-user/` / `edit-user/` — thin routed hosts around `user-form`.
+  `edit-user` gates `<app-user-form>` behind `@if (user(); as u)` so the child
+  is only constructed once the async `getById` resolves — `initialUser` is
+  read once, in `user-form`'s field initializers, so it must already be real
+  data at construction time.
+- `details-user/`, `deactivate-confirm/`, `change-role-dialog/` — each its own
+  component wrapping an `hlm-alert-dialog`, opened imperatively
+  (`viewChild().open(user)` / `.close()`), same proven pattern as RBAC's
+  dialogs. `change-role-dialog` uses `hlm-alert-dialog` rather than the plain
+  `hlm-dialog` primitive the task named — lower-risk reuse of the
+  already-verified composition over `hlm-dialog`'s separate
+  `NgComponentOutlet`-based content API; noted as a deliberate substitution.
+- `preview/user-management-preview.*` + `user-management.routes.ts` — toolbar
+  (reusing the shared `ThemeService`/`LanguageService` toggles) + the real
+  feature routes. `users-list` already exposes every action itself, so there
+  was nothing module-specific to add to the toolbar.
+
+### Sync-ready checklist
+
+- [x] Every action (add, edit, view details, change role, deactivate,
+      activate) wired to the real service and confirmed rendering correctly
+      via a live headless-Chrome screenshot pass (`/user-management-preview/users`
+      and `/users/new`) — table, avatars, badges, dropdown, and the add form all
+      render as designed, in both a full-width and a 390px-wide viewport (the
+      table scrolls horizontally via spartan's own `hlmTableContainer`, same as
+      RBAC's `roles-list`).
+- [ ] **Profile-image upload → reload persistence not exercised live** — this
+      needs an actual file picked through a real file input, which a headless
+      screenshot pass can't drive. The `JSON.stringify`/`parse` + `localStorage`
+      round-trip has no inherent length limit on the JS-string side, but the
+      actual byte-for-byte check (upload a real image, reload, confirm it comes
+      back intact) is still owed to a live browser pass.
+- [x] Zero coupling to `core/auth`/`core/rbac` — grep above, clean.
+- [x] `ng build` (prod) clean; `user-management-preview-routes` lazy chunk
+      emitted.
+- [x] No hardcoded colors; every component composes spartan primitives
+      unmodified (`git diff -- src/app/ui/` empty).
+- [x] Responsive: table scrolls horizontally at 390px (confirmed via
+      screenshot); forms are `max-w-2xl` with `sm:grid-cols-2`.
+
+### For the future sync task list
+
+See `USER_MANAGEMENT_SYNC_SUMMARY.md` at the repo root for the full file
+listing, the profile-image-as-base64 mock-vs-real-backend gap (Task 4 — a
+genuinely different implementation, not a service swap), and whether
+`modules:user-management` composing with `modules:rbac` later (the account
+role becoming a real RBAC role picker) is worth pursuing — flagged as a future
+possibility, not a decision, per the task list's own instruction. Nothing in
+`blueprint-platform` / `schema.json` / `preset.ts` was touched.

@@ -1,0 +1,91 @@
+@let chip = 'rounded-md border px-2.5 py-1 whitespace-nowrap hover:bg-accent';
+@let on = 'bg-accent text-accent-foreground';
+
+<div class="flex h-svh flex-col">
+  <div
+    class="bg-background text-foreground flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2 text-sm"
+  >
+    <span class="font-semibold">auth-preview</span>
+
+    <div class="flex items-center gap-1">
+      @for (l of layouts; track l) {
+        <a
+          [class]="currentLayout() === l ? chip + ' ' + on : chip"
+          [routerLink]="linkFor(l, currentForm())"
+          queryParamsHandling="merge"
+        >
+          {{ l }}
+        </a>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center gap-1">
+      @for (f of forms; track f.path) {
+        <a
+          [class]="currentForm() === f.path ? chip + ' ' + on : chip"
+          [routerLink]="linkFor(currentLayout(), f.path)"
+          queryParamsHandling="merge"
+        >
+          {{ f.label }}
+        </a>
+      }
+    </div>
+
+    <div class="flex flex-wrap items-center gap-1">
+      <button
+        type="button"
+        [class]="features.signup() ? chip + ' ' + on : chip"
+        (click)="toggleFeature('signup')"
+      >
+        signup: {{ features.signup() ? 'on' : 'off' }}
+      </button>
+      <button
+        type="button"
+        [class]="features.forgotPassword() ? chip + ' ' + on : chip"
+        (click)="toggleFeature('forgotPassword')"
+      >
+        forgot: {{ features.forgotPassword() ? 'on' : 'off' }}
+      </button>
+      <button
+        type="button"
+        [class]="features.changePassword() ? chip + ' ' + on : chip"
+        (click)="toggleFeature('changePassword')"
+      >
+        change-pw: {{ features.changePassword() ? 'on' : 'off' }}
+      </button>
+    </div>
+
+    <div class="ms-auto flex flex-wrap items-center gap-2">
+      <button type="button" [class]="chip" (click)="toggleStrategy()">
+        strategy: {{ strategy() }}
+      </button>
+      <button type="button" [class]="chip" (click)="theme.toggleDark()">
+        mode: {{ theme.dark() ? 'dark' : 'light' }}
+      </button>
+      <button type="button" [class]="chip" (click)="theme.toggleBrandX()">
+        palette: {{ theme.brandX() ? 'brand-x' : 'default' }}
+      </button>
+      <button type="button" [class]="chip" (click)="lang.toggle()">
+        dir: {{ lang.dir() === 'rtl' ? 'RTL' : 'LTR' }}
+      </button>
+      <button type="button" [class]="chip" (click)="testRequest()">test request</button>
+      <button type="button" [class]="chip" (click)="signOut()">sign out</button>
+    </div>
+  </div>
+
+  <div class="bg-muted/30 text-muted-foreground shrink-0 border-b px-4 py-1 text-xs">
+    demo login: <code>demo&#64;blueprint.dev</code> / <code>password</code> &nbsp;·&nbsp; reset
+    code: <code>123456</code> &nbsp;·&nbsp; jwt authed: {{ jwt.isAuthenticated()() }} · session
+    authed:
+    {{ session.isAuthenticated()() }}
+    @if (lastRequest()) {
+      &nbsp;·&nbsp; {{ lastRequest() }}
+    }
+  </div>
+
+  <div class="min-h-0 flex-1 overflow-auto">
+    @if (outletReady()) {
+      <app-auth-outlet-scope />
+    }
+  </div>
+</div>

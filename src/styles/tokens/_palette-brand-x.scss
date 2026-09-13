@@ -1,34 +1,11 @@
-$palette-brand-x: (
-  'background': #ffffff,
-  'foreground': #111827,
-  'card': #ffffff,
-  'card-foreground': #111827,
-  'popover': #ffffff,
-  'popover-foreground': #111827,
-  'primary': #2563eb,
-  'primary-foreground': #ffffff,
-  'secondary': #f4f5f7,
-  'secondary-foreground': #111827,
-  'muted': #f4f5f7,
-  'muted-foreground': #6b7280,
-  'accent': #f4f5f7,
-  'accent-foreground': #111827,
-  'destructive': #dc2626,
-  'destructive-foreground': #ffffff,
-  'border': #e5e7eb,
-  'input': #e5e7eb,
-  'ring': #93b4fd,
-  'warning': #d97706,
-  'warning-foreground': #111827,
-  'success': #16a34a,
-  'success-foreground': #ffffff,
-  'sidebar': #1e1b2e,
-  'sidebar-foreground': #e5e7eb,
-  'sidebar-primary': #a78bfa,
-  'sidebar-primary-foreground': #1e1b2e,
-  'sidebar-accent': #2d2a45,
-  'sidebar-accent-foreground': #f9fafb,
-  'sidebar-border': #3f3a5c,
-  'sidebar-ring': #a78bfa,
-  'radius': 0.5rem,
-);
+// Brand-X — LIGHT-mode brand override scaffold.
+//
+// Ships EMPTY on purpose. A generated project fills this map with its own brand
+// colours (any subset of the keys in `_palette-default.scss`). Applied via the
+// `.theme-brand-x` class: an empty map emits no rules, so "brand-x active but
+// unfilled" has zero visual effect and correctly falls through to whichever base
+// palette (default or `.dark`) is active. Keys left undefined here always fall
+// through; keys defined here win by `.theme-brand-x` specificity.
+//
+// Dark-mode brand overrides go in `_palette-brand-x-dark.scss`, not here.
+$palette-brand-x: ();

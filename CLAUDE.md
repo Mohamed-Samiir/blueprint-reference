@@ -113,6 +113,14 @@ palette (`.theme-brand-x`) toggle so every combination is reachable without code
 
 - Prettier: `printWidth: 100`, `singleQuote: true`; `.editorconfig` sets 2-space indent,
   final newline, single quotes in `.ts`.
-- Templates: prefer inline `template:` for small shells (as the layout components do);
-  `templateUrl` + `.html` for the root app.
+- **Three files per component.** Every component you create or change gets a separate
+  `<name>.ts`, `<name>.html`, and `<name>.scss`, wired with `templateUrl` / `styleUrl`.
+  Never inline `template:` or `styles:` in the `.ts`, no matter how small the component
+  is — do not create a single-file component again. (The `src/app/layout/**` shells and
+  `src/app/layout-preview/**` predate this rule and still inline their templates; leave
+  them until a task says otherwise.)
+- **Layouts never use `<ng-content>`.** A layout or shell component renders `<router-outlet />`
+  and its contents are wired as child routes — always, no exceptions. Content projection
+  (`<ng-content>`) is only for leaf UI components (cards, fields, buttons), never for
+  anything that positions page-level regions.
 - Use control-flow syntax (`@for`, `@if`) and `track`, not `*ngFor` / `*ngIf`.
